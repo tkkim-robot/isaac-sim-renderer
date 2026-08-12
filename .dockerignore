@@ -1,0 +1,5 @@
+# The application source is bind-mounted at runtime; it is not baked into the
+# derived image.  Sending only the Dockerfile also keeps large recordings and
+# local Isaac Sim caches out of the build context.
+**
+!Dockerfile

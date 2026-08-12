@@ -1,0 +1,184 @@
+<?xml version="1.0"?>
+<!--
+  Mesh-free differential-drive tutorial robot for Isaac Sim.
+  Coordinates follow REP-103: +x forward, +y left, +z up; all values are SI.
+  The base_link frame lies on the ground plane, so it can be spawned at z=0.
+-->
+<robot name="tutorial_diff_drive">
+  <material name="dd_body_blue">
+    <color rgba="0.055 0.30 0.72 1.0"/>
+  </material>
+  <material name="dd_body_dark">
+    <color rgba="0.075 0.085 0.095 1.0"/>
+  </material>
+  <material name="dd_tire">
+    <color rgba="0.025 0.025 0.025 1.0"/>
+  </material>
+  <material name="dd_hub">
+    <color rgba="0.58 0.62 0.67 1.0"/>
+  </material>
+  <material name="dd_front_marker">
+    <color rgba="1.0 0.58 0.02 1.0"/>
+  </material>
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0.105" rpy="0 0 0"/>
+      <mass value="4.0"/>
+      <inertia ixx="0.01827" ixy="0" ixz="0"
+               iyy="0.03627" iyz="0" izz="0.05027"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0.105" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.32 0.22 0.08"/>
+      </geometry>
+      <material name="dd_body_blue"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.153" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.18 0.14 0.016"/>
+      </geometry>
+      <material name="dd_body_dark"/>
+    </visual>
+    <!-- Low-profile sensor puck. -->
+    <visual>
+      <origin xyz="0.025 0 0.177" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.042" length="0.032"/>
+      </geometry>
+      <material name="dd_body_dark"/>
+    </visual>
+    <!-- The orange nose makes +x unambiguous in camera images. -->
+    <visual>
+      <origin xyz="0.164 0 0.105" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.010 0.12 0.040"/>
+      </geometry>
+      <material name="dd_front_marker"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.105" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.32 0.22 0.08"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 0.153" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.18 0.14 0.016"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.025 0 0.177" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.042" length="0.032"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="left_wheel_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.35"/>
+      <!-- Cylinder axis is y: Iyy is the axial moment. -->
+      <inertia ixx="0.000416" ixy="0" ixz="0"
+               iyy="0.000739" iyz="0" izz="0.000416"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.040"/>
+      </geometry>
+      <material name="dd_tire"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
+      <geometry>
+        <cylinder radius="0.027" length="0.042"/>
+      </geometry>
+      <material name="dd_hub"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.040"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_wheel_joint" type="continuous">
+    <origin xyz="0.045 0.130 0.065" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="left_wheel_link"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="12.0" velocity="30.0"/>
+    <dynamics damping="0.02" friction="0.01"/>
+  </joint>
+
+  <link name="right_wheel_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.35"/>
+      <!-- Cylinder axis is y: Iyy is the axial moment. -->
+      <inertia ixx="0.000416" ixy="0" ixz="0"
+               iyy="0.000739" iyz="0" izz="0.000416"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.040"/>
+      </geometry>
+      <material name="dd_tire"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
+      <geometry>
+        <cylinder radius="0.027" length="0.042"/>
+      </geometry>
+      <material name="dd_hub"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.040"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="right_wheel_joint" type="continuous">
+    <origin xyz="0.045 -0.130 0.065" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="right_wheel_link"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="12.0" velocity="30.0"/>
+    <dynamics damping="0.02" friction="0.01"/>
+  </joint>
+
+  <!-- A fixed spherical skid is robust and keeps the example transmission-free. -->
+  <link name="rear_caster_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.08"/>
+      <inertia ixx="0.0000216" ixy="0" ixz="0"
+               iyy="0.0000216" iyz="0" izz="0.0000216"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.026"/>
+      </geometry>
+      <material name="dd_hub"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.026"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="rear_caster_joint" type="fixed">
+    <origin xyz="-0.125 0 0.026" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="rear_caster_link"/>
+  </joint>
+</robot>

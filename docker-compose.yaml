@@ -1,0 +1,77 @@
+name: ${COMPOSE_PROJECT_NAME:-isaac-sim-renderer}
+
+services:
+  isaac-sim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ISAAC_SIM_VERSION: ${ISAAC_SIM_VERSION:-6.0.1}
+    image: ${ISAAC_SIM_IMAGE:-isaac-sim-renderer:6.0.1}
+    init: true
+    user: "1234:1234"
+    working_dir: /workspace
+    entrypoint:
+      - /isaac-sim/python.sh
+    command:
+      - -c
+      - import signal; signal.pause()
+    environment:
+      # Setting this to Y explicitly accepts the NVIDIA Isaac Sim EULA.
+      ACCEPT_EULA: "Y"
+      HOME: /isaac-sim
+      ISAAC_OUTPUT_DIR: /outputs
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-all}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    gpus: all
+    network_mode: host
+    ipc: host
+    shm_size: 2gb
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    volumes:
+      # Tutorial source is intentionally immutable inside the simulator.
+      - type: bind
+        source: .
+        target: /workspace
+        read_only: true
+      # Rendered frames and videos are the only project files writable by it.
+      - type: bind
+        source: ${ISAAC_OUTPUT_DIR_HOST:-./outputs}
+        target: /outputs
+        bind:
+          create_host_path: false
+
+      # NVIDIA's documented persistent cache/data locations for Isaac Sim 6.0.
+      - type: volume
+        source: cache-main
+        target: /isaac-sim/.cache
+      - type: volume
+        source: cache-compute
+        target: /isaac-sim/.nv/ComputeCache
+      - type: volume
+        source: logs
+        target: /isaac-sim/.nvidia-omniverse/logs
+      - type: volume
+        source: config
+        target: /isaac-sim/.nvidia-omniverse/config
+      - type: volume
+        source: data
+        target: /isaac-sim/.local/share/ov/data
+      - type: volume
+        source: packages
+        target: /isaac-sim/.local/share/ov/pkg
+      - type: volume
+        source: hub-cache
+        target: /var/cache/hub
+
+volumes:
+  cache-main:
+  cache-compute:
+  logs:
+  config:
+  data:
+  packages:
+  hub-cache:
