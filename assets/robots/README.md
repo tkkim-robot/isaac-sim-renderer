@@ -14,8 +14,8 @@ and +z is up**.
 
 This is a visually recognizable Crazyflie-style quadrotor for kinematic scene
 and rendering examples. Example 01 imports it as a hidden structural backing
-and renders the faithful former-SEAMLIS procedural proxy on top; set that
-scenario's `visual_style` to `"urdf"` to display this raw model instead. It is
+and renders a polished procedural quadrotor on top; set that scenario's
+`visual_style` to `"urdf"` to display this raw model instead. It is
 not a flight-dynamics model and does not include a motor, propeller-thrust,
 battery, or aerodynamic plugin. The root is `base_link`; four continuous
 joints rotate the four propeller links about +z.

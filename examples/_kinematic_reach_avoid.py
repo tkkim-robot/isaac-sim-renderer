@@ -17,7 +17,11 @@ from controllers import CircleObstacle, PIDConfig, PIDReachAvoidController
 from isaac_renderer.cli import RenderOptions
 from isaac_renderer.collision import Circle, CollisionMonitor
 from isaac_renderer.paths import ASSET_ROOT
-from isaac_renderer.quadrotor import AnimatedQuadrotor, add_seamlis_accent_lights, spawn_seamlis_quadrotor
+from isaac_renderer.quadrotor import (
+    AnimatedQuadrotor,
+    add_quadrotor_accent_lights,
+    spawn_procedural_quadrotor,
+)
 from isaac_renderer.scene import (
     add_camera,
     add_cube,
@@ -50,7 +54,7 @@ class Scenario:
     altitude: float
     visual_scale: float
     robot_radius: float
-    visual_style: Literal["urdf", "seamlis_proxy"]
+    visual_style: Literal["urdf", "procedural_quadrotor"]
     camera_mode: Literal["fixed", "follow"]
     camera_eye: tuple[float, float, float]
     camera_target: tuple[float, float, float]
@@ -147,7 +151,7 @@ def _update_follow_camera(
     altitude: float,
     state: dict[str, np.ndarray | None],
 ) -> None:
-    """Smooth close follow view adapted from the former SEAMLIS renderer."""
+    """Keep a smooth, close view behind and above the robot."""
 
     heading = np.asarray((math.cos(yaw), math.sin(yaw)), dtype=float)
     left = np.asarray((-heading[1], heading[0]), dtype=float)
@@ -180,8 +184,8 @@ def _build_scene(simulation_app, scenario: Scenario) -> tuple[RobotHandle, str, 
     new_stage(simulation_app)
     add_ground(size=18.0)
     add_lights()
-    if scenario.visual_style == "seamlis_proxy":
-        add_seamlis_accent_lights()
+    if scenario.visual_style == "procedural_quadrotor":
+        add_quadrotor_accent_lights()
 
     obstacle_material = create_material("/World/Looks/StaticObstacle", (0.80, 0.24, 0.12), roughness=0.42)
     dynamic_material = create_material("/World/Looks/DynamicObstacle", (0.95, 0.67, 0.08), roughness=0.32)
@@ -243,12 +247,12 @@ def _build_scene(simulation_app, scenario: Scenario) -> tuple[RobotHandle, str, 
     if not imported_model_path or not stage().GetPrimAtPath(imported_model_path).IsValid():
         raise RuntimeError(f"Could not resolve model root from {articulation_path!r}")
 
-    if scenario.visual_style == "seamlis_proxy":
-        # SEAMLIS rendered a procedural proxy rather than the imported robot.
+    if scenario.visual_style == "procedural_quadrotor":
         # Keep the URDF as an invisible, synchronized structural backing so the
-        # tutorial still demonstrates a self-contained Crazyflie URDF import.
+        # tutorial demonstrates both a self-contained import and a customizable
+        # procedural rendering layer.
         set_visible(imported_model_path, False)
-        quadrotor = spawn_seamlis_quadrotor()
+        quadrotor = spawn_procedural_quadrotor()
         robot_handle = RobotHandle(
             visible_path=quadrotor.root_path,
             visual_scale=scenario.visual_scale,
@@ -363,8 +367,8 @@ def run_kinematic_reach_avoid(simulation_app, options: RenderOptions, scenario: 
                 rotor_spin_scale=1.0,
             )
         else:
-            # The previous renderer stopped the failed vehicle, marked impact,
-            # and made its drone fall/tumble.  Keep that clear failure behavior.
+            # Stop the failed vehicle, mark impact, and make an aerial robot
+            # fall and tumble so collision behavior is visually unambiguous.
             crash_age = max(0.0, time_s - collision_time)
             if ground_robot:
                 _set_robot_state(

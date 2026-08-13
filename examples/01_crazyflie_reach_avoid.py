@@ -1,8 +1,8 @@
-"""Render the faithful SEAMLIS-style quadrotor doing PID reach-avoid.
+"""Render a polished procedural quadrotor doing PID reach-avoid.
 
 The self-contained Crazyflie URDF is imported as a structural backing, while
-the visible layered USD proxy and spinning rotors faithfully reproduce the
-former renderer. Motion remains kinematic, like a trajectory-replay renderer.
+the visible layered USD proxy provides animated rotors and richer materials.
+Motion remains kinematic, like a trajectory-replay renderer.
 Use example 03 when you need Isaac PhysX to determine robot motion.
 """
 
@@ -55,7 +55,7 @@ try:
             altitude=0.96,
             visual_scale=6.0,
             robot_radius=0.30,
-            visual_style="seamlis_proxy",
+            visual_style="procedural_quadrotor",
             camera_mode="follow",
             camera_eye=(-5.2, -3.8, 3.35),
             camera_target=(-2.6, -2.0, 0.96),

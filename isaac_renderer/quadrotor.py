@@ -1,9 +1,8 @@
-"""Faithful procedural port of the quadrotor visual used by SEAMLIS.
+"""Reusable procedural quadrotor visual for rendering examples.
 
-The former renderer did not load a Crazyflie mesh or URDF for its visible
-robot. It assembled this proxy from ordinary USD primitives and rotated four
-child Xforms every captured frame. Keeping the implementation procedural makes
-the tutorial self-contained and stable across Isaac Sim releases.
+The visual is assembled from ordinary USD primitives and rotates four child
+Xforms every captured frame. Keeping it procedural makes the tutorial
+self-contained and stable across Isaac Sim releases.
 
 Import this module only after ``SimulationApp`` has started.
 """
@@ -27,7 +26,7 @@ from isaac_renderer.scene import (
     stage,
 )
 
-SEAMLIS_QUADROTOR_SCALE = 0.65
+DEFAULT_QUADROTOR_SCALE = 0.65
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,8 +96,8 @@ def _create_materials(prefix: str) -> dict[str, str]:
     }
 
 
-def add_seamlis_accent_lights() -> None:
-    """Add the cool fill and warm rim lights used by the old visual style."""
+def add_quadrotor_accent_lights() -> None:
+    """Add cool fill and warm rim lights for the quadrotor example."""
 
     fill = UsdLux.SphereLight.Define(stage(), "/World/Lights/QuadrotorFill")
     fill.CreateIntensityAttr(950.0)
@@ -113,12 +112,12 @@ def add_seamlis_accent_lights() -> None:
     UsdGeom.Xformable(rim.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(5.0, 4.5, 5.6))
 
 
-def spawn_seamlis_quadrotor(
+def spawn_procedural_quadrotor(
     *,
     root_path: str = "/World/Robots/CrazyflieVisual",
-    scale: float = SEAMLIS_QUADROTOR_SCALE,
+    scale: float = DEFAULT_QUADROTOR_SCALE,
 ) -> AnimatedQuadrotor:
-    """Build the exact layered primitive proxy used by the SEAMLIS renderer."""
+    """Build a polished, layered quadrotor from USD primitives."""
 
     resolved_scale = float(scale)
     if not math.isfinite(resolved_scale) or resolved_scale <= 0.0:
@@ -127,7 +126,7 @@ def spawn_seamlis_quadrotor(
     visual_root = f"{root_path}/Visual"
     _define_xform(root_path)
     _define_xform(visual_root)
-    materials = _create_materials("/World/Looks/SEAMLisQuadrotor")
+    materials = _create_materials("/World/Looks/ProceduralQuadrotor")
 
     def scaled(values: Sequence[float]) -> tuple[float, float, float]:
         return tuple(float(resolved_scale * value) for value in values)

@@ -6,11 +6,11 @@ import math
 
 
 def rotor_spin_degrees(frame_index: int, rotor_index: int, spin_scale: float = 1.0) -> float:
-    """Return the original SEAMLIS proxy's deterministic rotor angle.
+    """Return a deterministic rotor angle for the procedural quadrotor.
 
     The slight per-rotor speed difference keeps all four crosses from aliasing
     into the same pose in a 30 FPS recording. A zero scale intentionally snaps
-    the blades to rest, matching the former renderer's crash behavior.
+    the blades to rest so a collision is visually unambiguous.
     """
 
     if not isinstance(frame_index, int) or isinstance(frame_index, bool) or frame_index < 0:
