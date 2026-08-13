@@ -13,7 +13,7 @@ controller, and keep the reusable scene/capture utilities.
 
 | Example | Robot motion | Obstacles | What it teaches |
 | --- | --- | --- | --- |
-| [`01_crazyflie_reach_avoid.py`](examples/01_crazyflie_reach_avoid.py) | Kinematic URDF root poses | Static box/pillar plus a moving cylinder | Crazyflie-style URDF import, PID reach-avoid, collision/failure visualization, trails, MP4 |
+| [`01_crazyflie_reach_avoid.py`](examples/01_crazyflie_reach_avoid.py) | Kinematic URDF backing + animated USD proxy | Static box/pillar plus a moving cylinder | Faithful SEAMLIS quadrotor visual, spinning rotors, PID reach-avoid, collision/failure visualization, follow camera, MP4 |
 | [`02_mobile_robot_reach_avoid.py`](examples/02_mobile_robot_reach_avoid.py) | Kinematic unicycle model | Static and dynamic | Ground-robot controller template and the same renderer contract |
 | [`03_differential_drive_dynamics.py`](examples/03_differential_drive_dynamics.py) | Isaac PhysX articulation | A movable rigid box | Real wheel-joint velocity drives, mass, friction, contact response, a follow camera, MP4 |
 
@@ -28,6 +28,7 @@ Included reusable pieces:
 - swept-circle collision checks with latched metadata in
   [`isaac_renderer/collision.py`](isaac_renderer/collision.py);
 - USD scene, URDF import, camera, material, and trail helpers;
+- the former SEAMLIS procedural quadrotor geometry and rotor animation;
 - deterministic viewport PNG capture and FFmpeg H.264/yuv420p encoding;
 - self-contained primitive-only Crazyflie and differential-drive URDFs;
 - Docker Compose lifecycle scripts and host-side unit tests.
@@ -219,6 +220,16 @@ force sensor.
 
 ### Replace a URDF
 
+Example 01 deliberately has two robot layers. It imports
+`crazyflie_minimal.urdf` as an invisible, synchronized structural backing, then
+renders the polished proxy from [`isaac_renderer/quadrotor.py`](isaac_renderer/quadrotor.py).
+This is faithful to the former SEAMLIS renderer: that visible robot was built
+from USD cubes and cylinders, not loaded from a Crazyflie mesh or URDF. Its four
+rotor child Xforms rotate independently every captured frame and stop on crash.
+
+Set `visual_style="urdf"` in example 01 if you specifically want to display the
+raw imported URDF instead of the rendering proxy.
+
 1. Put a self-contained URDF and any meshes under `assets/robots/`.
 2. Copy example 01 or 02.
 3. Change `urdf_name`, `visual_scale`, `robot_radius`, start, and goal.
@@ -243,8 +254,9 @@ mesh collision distance, query PhysX or a signed-distance representation.
 
 ### Change the camera or video
 
-- Fixed hero view: edit `camera_eye` and `camera_target` in examples 01/02.
-- Follow view: adapt the per-frame `set_camera()` call in example 03.
+- Fixed hero view: edit `camera_eye` and `camera_target` in example 02.
+- Follow view: adapt `_update_follow_camera()` for example 01 or the per-frame
+  `set_camera()` call in example 03.
 - Encoding: edit `FrameRecorder.encode()` in
   [`isaac_renderer/video.py`](isaac_renderer/video.py).
 - Higher resolution: pass `--width 1920 --height 1080`.
@@ -281,7 +293,7 @@ For an inexpensive simulator smoke test, skip capture:
 ├── assets/robots/              self-contained tutorial URDFs
 ├── controllers/                simulator-independent PID reach-avoid
 ├── examples/                   executable Isaac Sim tutorials
-├── isaac_renderer/             scene, collision, path, status, video helpers
+├── isaac_renderer/             scene, animated quadrotor, collision, status, video
 ├── scripts/                    Compose lifecycle, rendering, and tests
 ├── tests/                      fast unit tests
 ├── Dockerfile                  Isaac Sim 6.0.1 + FFmpeg

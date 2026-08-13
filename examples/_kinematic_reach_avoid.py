@@ -17,6 +17,7 @@ from controllers import CircleObstacle, PIDConfig, PIDReachAvoidController
 from isaac_renderer.cli import RenderOptions
 from isaac_renderer.collision import Circle, CollisionMonitor
 from isaac_renderer.paths import ASSET_ROOT
+from isaac_renderer.quadrotor import AnimatedQuadrotor, add_seamlis_accent_lights, spawn_seamlis_quadrotor
 from isaac_renderer.scene import (
     add_camera,
     add_cube,
@@ -28,6 +29,7 @@ from isaac_renderer.scene import (
     create_material,
     import_urdf,
     new_stage,
+    set_camera,
     set_pose,
     set_transform_srt,
     set_visible,
@@ -48,8 +50,20 @@ class Scenario:
     altitude: float
     visual_scale: float
     robot_radius: float
+    visual_style: Literal["urdf", "seamlis_proxy"]
+    camera_mode: Literal["fixed", "follow"]
     camera_eye: tuple[float, float, float]
     camera_target: tuple[float, float, float]
+
+
+@dataclass(frozen=True, slots=True)
+class RobotHandle:
+    """Visible robot plus an optional hidden imported-URDF backing model."""
+
+    visible_path: str
+    visual_scale: float
+    backing_path: str | None = None
+    quadrotor: AnimatedQuadrotor | None = None
 
 
 def _dynamic_center(time_s: float, *, ground_robot: bool) -> tuple[np.ndarray, np.ndarray]:
@@ -96,10 +110,78 @@ def _collision_circles(obstacles: list[CircleObstacle]) -> list[Circle]:
     return circles
 
 
-def _build_scene(simulation_app, scenario: Scenario) -> tuple[str, str, str, str, str]:
+def _set_robot_state(
+    handle: RobotHandle,
+    position: tuple[float, float, float],
+    rpy: tuple[float, float, float],
+    *,
+    frame_index: int,
+    rotor_spin_scale: float,
+) -> None:
+    if handle.quadrotor is None:
+        set_transform_srt(
+            handle.visible_path,
+            position,
+            rpy,
+            scale=(handle.visual_scale,) * 3,
+        )
+        return
+
+    handle.quadrotor.set_world_pose(position, rpy)
+    handle.quadrotor.animate_rotors(frame_index, spin_scale=rotor_spin_scale)
+    if handle.backing_path is not None:
+        # Keep the invisible imported URDF synchronized as the structural
+        # backing for users who want to replace the proxy with real dynamics.
+        set_transform_srt(
+            handle.backing_path,
+            position,
+            rpy,
+            scale=(handle.visual_scale,) * 3,
+        )
+
+
+def _update_follow_camera(
+    camera_path: str,
+    position: np.ndarray,
+    yaw: float,
+    altitude: float,
+    state: dict[str, np.ndarray | None],
+) -> None:
+    """Smooth close follow view adapted from the former SEAMLIS renderer."""
+
+    heading = np.asarray((math.cos(yaw), math.sin(yaw)), dtype=float)
+    left = np.asarray((-heading[1], heading[0]), dtype=float)
+    desired_eye = np.asarray(
+        (
+            position[0] - 2.2 * heading[0] - 0.65 * left[0],
+            position[1] - 2.2 * heading[1] - 0.65 * left[1],
+            3.35,
+        ),
+        dtype=float,
+    )
+    desired_target = np.asarray(
+        (
+            position[0] + 0.30 * heading[0],
+            position[1] + 0.30 * heading[1],
+            altitude,
+        ),
+        dtype=float,
+    )
+    if state["eye"] is None:
+        state["eye"] = desired_eye
+        state["target"] = desired_target
+    else:
+        state["eye"] = 0.86 * state["eye"] + 0.14 * desired_eye
+        state["target"] = 0.80 * state["target"] + 0.20 * desired_target
+    set_camera(camera_path, state["eye"], state["target"])
+
+
+def _build_scene(simulation_app, scenario: Scenario) -> tuple[RobotHandle, str, str, str, str]:
     new_stage(simulation_app)
     add_ground(size=18.0)
     add_lights()
+    if scenario.visual_style == "seamlis_proxy":
+        add_seamlis_accent_lights()
 
     obstacle_material = create_material("/World/Looks/StaticObstacle", (0.80, 0.24, 0.12), roughness=0.42)
     dynamic_material = create_material("/World/Looks/DynamicObstacle", (0.95, 0.67, 0.08), roughness=0.32)
@@ -157,28 +239,47 @@ def _build_scene(simulation_app, scenario: Scenario) -> tuple[str, str, str, str
     # The importer may return `/robot/root_joint`, including for this free-base
     # import. Kinematic examples must move its parent model prim so visuals,
     # collision geometry, and every link move together.
-    robot_path = articulation_path.rsplit("/", 1)[0]
-    if not robot_path or not stage().GetPrimAtPath(robot_path).IsValid():
+    imported_model_path = articulation_path.rsplit("/", 1)[0]
+    if not imported_model_path or not stage().GetPrimAtPath(imported_model_path).IsValid():
         raise RuntimeError(f"Could not resolve model root from {articulation_path!r}")
-    set_transform_srt(
-        robot_path,
+
+    if scenario.visual_style == "seamlis_proxy":
+        # SEAMLIS rendered a procedural proxy rather than the imported robot.
+        # Keep the URDF as an invisible, synchronized structural backing so the
+        # tutorial still demonstrates a self-contained Crazyflie URDF import.
+        set_visible(imported_model_path, False)
+        quadrotor = spawn_seamlis_quadrotor()
+        robot_handle = RobotHandle(
+            visible_path=quadrotor.root_path,
+            visual_scale=scenario.visual_scale,
+            backing_path=imported_model_path,
+            quadrotor=quadrotor,
+        )
+    else:
+        robot_handle = RobotHandle(
+            visible_path=imported_model_path,
+            visual_scale=scenario.visual_scale,
+        )
+    _set_robot_state(
+        robot_handle,
         (*scenario.start, scenario.altitude),
         (0.0, 0.0, 0.0),
-        scale=(scenario.visual_scale,) * 3,
+        frame_index=0,
+        rotor_spin_scale=1.0,
     )
-    robot_prim = stage().GetPrimAtPath(robot_path)
+    robot_prim = stage().GetPrimAtPath(imported_model_path)
     print(
-        f"[{scenario.name}] imported robot at {robot_path} "
+        f"[{scenario.name}] imported URDF at {imported_model_path}; visible robot={robot_handle.visible_path} "
         f"children={[child.GetName() for child in robot_prim.GetChildren()]}",
         flush=True,
     )
-    return robot_path, moving_path, collision_marker, trail_path, camera_path
+    return robot_handle, moving_path, collision_marker, trail_path, camera_path
 
 
 def run_kinematic_reach_avoid(simulation_app, options: RenderOptions, scenario: Scenario) -> RunResult:
     """Run a deterministic PID reach-avoid rollout and optionally encode MP4."""
 
-    robot_path, moving_path, collision_marker, trail_path, camera_path = _build_scene(simulation_app, scenario)
+    robot_handle, moving_path, collision_marker, trail_path, camera_path = _build_scene(simulation_app, scenario)
     ground_robot = scenario.motion == "unicycle"
     controller = PIDReachAvoidController(
         PIDConfig(
@@ -219,6 +320,7 @@ def run_kinematic_reach_avoid(simulation_app, options: RenderOptions, scenario: 
     collision_time: float | None = None
     collision_payload = None
     reached_goal = False
+    follow_camera_state: dict[str, np.ndarray | None] = {"eye": None, "target": None}
 
     for frame in range(options.frames):
         time_s = frame * dt
@@ -253,31 +355,43 @@ def run_kinematic_reach_avoid(simulation_app, options: RenderOptions, scenario: 
 
         reached_goal = reached_goal or float(np.linalg.norm(position - goal)) <= controller.config.goal_tolerance
         if collision_time is None:
-            set_transform_srt(
-                robot_path,
+            _set_robot_state(
+                robot_handle,
                 (*position, scenario.altitude),
                 (0.0, 0.0, yaw),
-                scale=(scenario.visual_scale,) * 3,
+                frame_index=frame,
+                rotor_spin_scale=1.0,
             )
         else:
             # The previous renderer stopped the failed vehicle, marked impact,
             # and made its drone fall/tumble.  Keep that clear failure behavior.
             crash_age = max(0.0, time_s - collision_time)
             if ground_robot:
-                set_transform_srt(
-                    robot_path,
+                _set_robot_state(
+                    robot_handle,
                     (*position, scenario.altitude),
                     (0.0, min(0.65, crash_age), yaw),
-                    scale=(scenario.visual_scale,) * 3,
+                    frame_index=frame,
+                    rotor_spin_scale=0.0,
                 )
             else:
                 z = max(0.08, scenario.altitude - 0.5 * 9.81 * crash_age * crash_age)
-                set_transform_srt(
-                    robot_path,
+                _set_robot_state(
+                    robot_handle,
                     (*position, z),
                     (2.1 * crash_age, 1.4 * crash_age, yaw),
-                    scale=(scenario.visual_scale,) * 3,
+                    frame_index=frame,
+                    rotor_spin_scale=0.0,
                 )
+
+        if scenario.camera_mode == "follow":
+            _update_follow_camera(
+                camera_path,
+                position,
+                yaw,
+                scenario.altitude,
+                follow_camera_state,
+            )
 
         trail.append([float(position[0]), float(position[1]), 0.055])
         update_trail(trail_path, trail)

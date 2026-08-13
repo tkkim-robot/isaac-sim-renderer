@@ -136,13 +136,24 @@ def set_scale(prim_path: str, scale_xyz: Sequence[float]) -> None:
     xformable.SetXformOpOrder(ordered)
 
 
-def create_material(path: str, color: Sequence[float], *, roughness: float = 0.55, metallic: float = 0.0) -> str:
+def create_material(
+    path: str,
+    color: Sequence[float],
+    *,
+    roughness: float = 0.55,
+    metallic: float = 0.0,
+    opacity: float = 1.0,
+    emissive: Sequence[float] | None = None,
+) -> str:
     material = UsdShade.Material.Define(stage(), path)
     shader = UsdShade.Shader.Define(stage(), f"{path}/PreviewSurface")
     shader.CreateIdAttr("UsdPreviewSurface")
     shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*map(float, color)))
     shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(float(roughness))
     shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(float(metallic))
+    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(float(opacity))
+    if emissive is not None:
+        shader.CreateInput("emissiveColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*map(float, emissive)))
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     return path
 

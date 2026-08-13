@@ -13,9 +13,12 @@ and +z is up**.
 ## `crazyflie_minimal.urdf`
 
 This is a visually recognizable Crazyflie-style quadrotor for kinematic scene
-and rendering examples. It is not a flight-dynamics model and does not include
-a motor, propeller-thrust, battery, or aerodynamic plugin. The root is
-`base_link`; four continuous joints rotate the four propeller links about +z.
+and rendering examples. Example 01 imports it as a hidden structural backing
+and renders the faithful former-SEAMLIS procedural proxy on top; set that
+scenario's `visual_style` to `"urdf"` to display this raw model instead. It is
+not a flight-dynamics model and does not include a motor, propeller-thrust,
+battery, or aerodynamic plugin. The root is `base_link`; four continuous
+joints rotate the four propeller links about +z.
 The rotor centers are at x/y = +/-0.046 m. Red marks the front (+x), while blue
 marks the rear. The inertial and collision elements make the file importable as
 a complete URDF, but tutorial code should move its root pose kinematically

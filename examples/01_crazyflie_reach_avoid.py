@@ -1,7 +1,8 @@
-"""Render a Crazyflie-style URDF doing PID reach-avoid.
+"""Render the faithful SEAMLIS-style quadrotor doing PID reach-avoid.
 
-The motion is intentionally kinematic, like a trajectory-replay renderer.  It
-is the smallest example of the controller -> state -> Isaac renderer pattern.
+The self-contained Crazyflie URDF is imported as a structural backing, while
+the visible layered USD proxy and spinning rotors faithfully reproduce the
+former renderer. Motion remains kinematic, like a trajectory-replay renderer.
 Use example 03 when you need Isaac PhysX to determine robot motion.
 """
 
@@ -51,11 +52,13 @@ try:
             motion="holonomic",
             start=(-3.0, -2.2),
             goal=(3.2, 2.1),
-            altitude=0.85,
+            altitude=0.96,
             visual_scale=6.0,
             robot_radius=0.30,
-            camera_eye=(0.0, 0.0, 13.0),
-            camera_target=(0.0, 0.0, 0.0),
+            visual_style="seamlis_proxy",
+            camera_mode="follow",
+            camera_eye=(-5.2, -3.8, 3.35),
+            camera_target=(-2.6, -2.0, 0.96),
         ),
     )
 finally:

@@ -53,6 +53,8 @@ try:
             altitude=0.0,
             visual_scale=1.0,
             robot_radius=0.24,
+            visual_style="urdf",
+            camera_mode="fixed",
             camera_eye=(0.0, 0.0, 13.0),
             camera_target=(0.0, 0.0, 0.0),
         ),
